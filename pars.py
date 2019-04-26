@@ -79,17 +79,17 @@ def hh_parsing():
                     vacancy_metro_station.append(None)
             else:
                 vacancy_metro_station.append(None)
-
-    print(len(vacancy_id))
-    print(vacancy_name)
-    print(vacancy_spec)
+    print(vacancy)
+    #print(len(vacancy_id))
+    #print(vacancy_name)
+    #print(vacancy_spec)
     # print(vacancy_employer_id)
-    print(vacancy_employer)
-    print(vacancy_salary_from)
-    print(vacancy_salary_to)
-    print(vacancy_currency)
-    print(vacancy_metro_station)
-    print(vacancy_address)
+    #print(vacancy_employer)
+    #print(vacancy_salary_from)
+    #print(vacancy_salary_to)
+    #print(vacancy_currency)
+    #print(vacancy_metro_station)
+    #print(vacancy_address)
     return r.status_code
 
 
@@ -149,5 +149,5 @@ def cian_parsing():
     return r.status_code
 
 
-cian_parsing()
+#cian_parsing()
 hh_parsing()
