@@ -79,17 +79,17 @@ def hh_parsing():
                     vacancy_metro_station.append(None)
             else:
                 vacancy_metro_station.append(None)
-    print(vacancy)
-    #print(len(vacancy_id))
-    #print(vacancy_name)
-    #print(vacancy_spec)
+    # print(vacancy)
+    # print(len(vacancy_id))
+    # print(vacancy_name)
+    # print(vacancy_spec)
     # print(vacancy_employer_id)
-    #print(vacancy_employer)
-    #print(vacancy_salary_from)
-    #print(vacancy_salary_to)
-    #print(vacancy_currency)
-    #print(vacancy_metro_station)
-    #print(vacancy_address)
+    # print(vacancy_employer)
+    # print(vacancy_salary_from)
+    # print(vacancy_salary_to)
+    # print(vacancy_currency)
+    # print(vacancy_metro_station)
+    # print(vacancy_address)
     return r.status_code
 
 
@@ -138,16 +138,16 @@ def cian_parsing():
             flat_price.append(int(i[1].get_text().split(' ₽')[0].replace(' ', '')))
             flat_price_per_meter.append(int(i[1].get_text().split(' ₽')[-2].replace(' ', '')))
 
-    print(len(flat_id))
-    print(flat_id)
+    # print(len(flat_id))
+    # print(flat_id)
     # print(flat_floor)
-    print(flat_rooms)
+    # print(flat_rooms)
     # print(flat_address)
-    print(flat_metro_station)
-    print(flat_price)
-    print(flat_price_per_meter)
+    # print(flat_metro_station)
+    # print(flat_price)
+    # print(flat_price_per_meter)
     return r.status_code
 
 
-#cian_parsing()
+cian_parsing()
 hh_parsing()
