@@ -3,8 +3,8 @@ import re
 import random
 
 HH_BASEURL = 'https://api.hh.ru'
-PAGENUM = 10
-SPECNUM = 10
+PAGENUM = 1
+SPECNUM = 1
 
 
 def hh_url_constructor(specialisation_id):
@@ -36,9 +36,9 @@ def hh_parsing():
         r = requests.get(url)
 
         v = r.json()
-        vacancy_db_format = [int(v['id']), v['name'], int(v['specializations'][0]['profarea_id']),
+        vacancy_db_format = [int(v.get('id', -1)), v.get('name', None), int(v['specializations'][0]['profarea_id']),
                              v['specializations'][0]['profarea_name'], v['employer']['name'],
-                             re.sub(r'</?\w+/?>', '', v['description'])]
+                             re.sub(r'</?\w+\s?/?>', '', v.get('description', None))]
 
         if v['salary'] is not None:
             vacancy_db_format += v['salary']['from'], v['salary']['from'], v['salary']['currency']
@@ -49,7 +49,8 @@ def hh_parsing():
                 vacancy_db_format.append(v['address']['metro']['station_name'])
         else:
             vacancy_db_format.append(None)
-        print(vacancy_db_format)
+
+        #print(vacancy_db_format)
     return r.status_code
 
 
