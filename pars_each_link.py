@@ -41,7 +41,7 @@ def hh_parsing():
                              re.sub(r'</?\w+\s?/?>', '', v.get('description', None))]
 
         if v['salary'] is not None:
-            vacancy_db_format += v['salary']['from'], v['salary']['from'], v['salary']['currency']
+            vacancy_db_format += v['salary']['from'], v['salary']['to'], v['salary']['currency']
         else:
             vacancy_db_format += None, None, None
 
@@ -50,7 +50,7 @@ def hh_parsing():
         else:
             vacancy_db_format.append(None)
 
-        #print(vacancy_db_format)
+    print(vacancy_db_format)
     return r.status_code
 
 
