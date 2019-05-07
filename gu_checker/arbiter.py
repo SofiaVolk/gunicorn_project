@@ -211,11 +211,6 @@ class Arbiter(object):
         try:
             self.manage_workers()
 
-            # проверить работу канала при изменившихся пидах воркеров
-            # сделать чтение из канала по EOF
-
-            # time.sleep(2)
-
             while True:
                 self.maybe_promote_master()
 
@@ -225,7 +220,6 @@ class Arbiter(object):
                     self.murder_workers()
                     self.manage_workers()
                     self.manage_checker(update_workers_pids=True)
-                    # self.halt()
                     continue
 
                 if sig not in self.SIG_NAMES:
