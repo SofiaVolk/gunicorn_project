@@ -203,10 +203,18 @@ class Arbiter(object):
 
         "Starting new customer process - pickle checker "
         self.checker_alive = False
+        self.checker_pipe = os.pipe()
+        for p in self.checker_pipe:
+            util.set_non_blocking(p)
         self.manage_checker()
 
         try:
             self.manage_workers()
+
+            # проверить работу канала при изменившихся пидах воркеров
+            # сделать чтение из канала по EOF
+
+            # time.sleep(2)
 
             while True:
                 self.maybe_promote_master()
@@ -214,9 +222,10 @@ class Arbiter(object):
                 sig = self.SIG_QUEUE.pop(0) if self.SIG_QUEUE else None
                 if sig is None:
                     self.sleep()
-                    self.manage_checker()
                     self.murder_workers()
                     self.manage_workers()
+                    self.manage_checker(update_workers_pids=True)
+                    # self.halt()
                     continue
 
                 if sig not in self.SIG_NAMES:
@@ -658,22 +667,25 @@ class Arbiter(object):
                     return
             raise
 
-    def manage_checker(self):
+    def manage_checker(self, update_workers_pids=False):
         if not self.checker_alive:
             self.spawn_checker()
             return
 
         if psutil.pid_exists(self.pickle_checker_pid):  # os.kill(pid, 0)
+            if update_workers_pids:
+                self.maybe_update_workers_pids()
             return
         else:
             self.checker_alive = False
             self.spawn_checker()
 
     def spawn_checker(self):
-        pickle_checker = checker.Checker(self.log)
+        pickle_checker = checker.Checker(self.log, self.checker_pipe[0])
         pickle_checker.start()
         self.checker_alive = True
         self.pickle_checker_pid = pickle_checker.pid
+        self.workers = pickle_checker.workers
 
     def kill_checker(self):
         try:
@@ -684,4 +696,15 @@ class Arbiter(object):
                 self.log.warning("No checker process to terminate")
         except Exception:
             raise
+
+    def maybe_update_workers_pids(self):
+        new_workers = []
+        for key in self.WORKERS.keys():
+            new_workers.append(key)
+
+        if self.workers == new_workers:
+            return
+        else:
+            self.workers = new_workers
+            os.write(self.checker_pipe[1], bytes((' '.join(str(_) for _ in new_workers)).encode('utf-8')))
 
