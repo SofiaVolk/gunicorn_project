@@ -1,15 +1,19 @@
 import requests
 import re
 import random
+import csv
 
 HH_BASEURL = 'https://api.hh.ru'
-PAGENUM = 1
+PAGENUM = 3
 SPECNUM = 1
+HEADER = ['id', 'name', 'profarea_id', 'profarea_name', 'employer', 'description',
+          'salary_from', 'salary_to', 'currency', 'metro_station']
 
 
 def hh_url_constructor(specialisation_id):
     urls = []
-    for spec_id in random.sample(specialisation_id, SPECNUM):
+    # for spec_id in random.sample(specialisation_id, SPECNUM):
+    for spec_id in specialisation_id:
         for page in range(PAGENUM):
             url = f'{HH_BASEURL}/vacancies?page={page}&area=1&specialization={spec_id}'
             r = requests.get(url)
@@ -32,23 +36,30 @@ def hh_parsing():
     prof_area_id = [prof_area['id'] for item in specializations_dict for prof_area in item['specializations']]
     urls = hh_url_constructor(prof_area_id)
 
-    for url in urls:
-        r = requests.get(url)
+    with open('dataset_vacancy.csv', 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=HEADER, delimiter='|')
+        writer.writeheader()
+        writer = csv.writer(csvfile, delimiter='|') # , quotechar='"'
 
-        v = r.json()
-        vacancy_db_format = [int(v.get('id', -1)), v.get('name', None), int(v['specializations'][0]['profarea_id']),
-                             v['specializations'][0]['profarea_name'], v['employer']['name'],
-                             re.sub(r'</?\w+\s?/?>', '', v.get('description', None))]
+        for url in urls:
+            r = requests.get(url)
 
-        if v['salary'] is not None:
-            vacancy_db_format += v['salary']['from'], v['salary']['to'], v['salary']['currency']
-        else:
-            vacancy_db_format += None, None, None
+            v = r.json()
+            vacancy_db_format = [int(v.get('id', -1)), v.get('name', None), int(v['specializations'][0]['profarea_id']),
+                                 v['specializations'][0]['profarea_name'], v['employer']['name'],
+                                 re.sub(r'</?\w+\s?/?>', '', v.get('description', None))]
 
-        if v['address'] is not None and v['address']['metro'] is not None:
-                vacancy_db_format.append(v['address']['metro']['station_name'])
-        else:
-            vacancy_db_format.append(None)
+            if v['salary'] is not None:
+                vacancy_db_format += v['salary']['from'], v['salary']['to'], v['salary']['currency']
+            else:
+                vacancy_db_format += None, None, None
+
+            if v['address'] is not None and v['address']['metro'] is not None:
+                    vacancy_db_format.append(v['address']['metro']['station_name'])
+            else:
+                vacancy_db_format.append(None)
+
+            writer.writerow(vacancy_db_format)
 
     return r.status_code
 
