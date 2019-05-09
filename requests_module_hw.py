@@ -5,7 +5,7 @@ import logs
 import database as db
 
 from flaskapp import app
-from database_validation import HhVacancyUserSchema
+from database_validation import HhVacancyUserSchema, CianUserSchema
 
 
 def start_timer():
@@ -40,6 +40,20 @@ def log_decor(func):
     return wrapper
 
 
+"""
+    API handlers
+    
+    экземпляр приложения вынесен в отдельный файл flaskapp.py
+    вместо cian_request() для каждого метода теперь свой хендлер
+"""
+
+@log_decor
+def get_hh(content):
+    db.get_vacancy()
+    msg = "zaglushka GET hh"
+    return 200, msg
+
+
 @log_decor
 def post_hh(content):
     try:
@@ -68,10 +82,23 @@ def del_hh(content):
     return 200, msg
 
 
-# @app.route('/')
-# def index():
-#    logs.api_logger.info('Test logging record <200>')
-#    return "Hey, Alex!"
+@app.route('/hh', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def hh_request():
+    content = request.json
+    if no_content(content):
+        return '', 400
+
+    if request.method == 'GET':
+        return '', get_hh(content)
+
+    if request.method == 'POST':
+        return '', post_hh(content)
+
+    if request.method == 'PUT':
+        return '', put_hh(content)
+
+    if request.method == 'DELETE':
+        return '', del_hh(content)
 
     # ошибка в передаваемых данных(тип, кол-во ...)
     # msg = 'текст ошибки - ответ Marshmallow'
@@ -90,51 +117,57 @@ def del_hh(content):
 
 
 @log_decor
-@app.route('/vacancy', methods='POST')
-def post_similar_vacancy():
+@app.route('/cian', methods='GET')
+def cian_get():
+    content = request.json
+    if no_content(content):
+        return '', 400
+
+    db.get_flat()
+    msg = "zaglushka GET cian"
+    return 200, msg
+
+
+@log_decor
+@app.route('/cian', methods='POST')
+def cian_post():
     content = request.json
     if no_content(content):
         return '', 400
 
     try:
-        data = HhVacancyUserSchema(strict=True).load(content).data
+        data = CianUserSchema(strict=True).load(content).data
     except marshmallow.exceptions.ValidationError as e:
         return jsonify(e.messages), 400
 
-    db.add_vacancy_user(data['company'], data['salary_min'], data['salary_max'],
-                        data['currency'], data['station'], data['domain'])
+    db.add_flat_user(data['count_rooms'], data['station'], data['price'],
+                     data['floor'], data['square'], data['price_sq'], data['address'])
 
-    msg = "zaglushka similar_vacancy"
+    msg = "zaglushka POST cian"
     return 200, msg
 
 
 @log_decor
-@app.route('/classvacancy', methods='POST')
-def post_classify_vacancy():
+@app.route('/cian', methods='PUT')
+def cian_put():
     content = request.json
     if no_content(content):
         return '', 400
 
-    try:
-        data = HhVacancyUserSchema(strict=True).load(content).data
-    except marshmallow.exceptions.ValidationError as e:
-        return jsonify(e.messages), 400
-
-    db.add_vacancy_user(data['company'], data['salary_min'], data['salary_max'],
-                        data['currency'], data['station'], data['domain'])
-
-    msg = "zaglushka classify_vacancy"
+    db.update_station(content.get('name_old'), content.get('name_now'))
+    msg = "zaglushka PUT cian"
     return 200, msg
 
 
 @log_decor
-@app.route('/product', methods='POST')
-def post_similar_product():
+@app.route('/cian', methods='DELETE')
+def cian_delete():
     content = request.json
     if no_content(content):
         return '', 400
 
-    msg = "zaglushka similar_product"
+    db.del_flat_user(content.get('id'))
+    msg = "zaglushka DEL cian"
     return 200, msg
 
 
