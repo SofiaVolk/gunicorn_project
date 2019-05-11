@@ -1,10 +1,10 @@
 from flask import request, jsonify
 import time
 import marshmallow
-import logs
-import database as db
 
+import logs
 from flaskapp import app
+import database as db
 from database_validation import HhVacancyUserSchema, CianUserSchema
 
 
@@ -51,7 +51,7 @@ def log_decor(func):
 def get_hh(content):
     db.get_vacancy()
     msg = "zaglushka GET hh"
-    return 200, msg
+    return msg, 200
 
 
 @log_decor
@@ -65,21 +65,21 @@ def post_hh(content):
                         data['currency'], data['station'], data['domain'])
 
     msg = "zaglushka POST hh"
-    return 200, msg
+    return msg, 200
 
 
 @log_decor
 def put_hh(content):
     db.update_domain(content.get('name_old'), content.get('name_now'))
     msg = "zaglushka PUT hh"
-    return 200, msg
+    return msg, 200
 
 
 @log_decor
 def del_hh(content):
     db.del_vacancy_user(content.get('id'))
     msg = "zaglushka DEL hh"
-    return 200, msg
+    return msg, 200
 
 
 @app.route('/hh', methods=['GET', 'POST', 'PUT', 'DELETE'])
@@ -117,7 +117,7 @@ def hh_request():
 
 
 @log_decor
-@app.route('/cian', methods='GET')
+@app.route('/cian', methods=['GET'])
 def cian_get():
     content = request.json
     if no_content(content):
@@ -125,11 +125,11 @@ def cian_get():
 
     db.get_flat()
     msg = "zaglushka GET cian"
-    return 200, msg
+    return msg, 200
 
 
 @log_decor
-@app.route('/cian', methods='POST')
+@app.route('/cian', methods=['POST'])
 def cian_post():
     content = request.json
     if no_content(content):
@@ -144,11 +144,11 @@ def cian_post():
                      data['floor'], data['square'], data['price_sq'], data['address'])
 
     msg = "zaglushka POST cian"
-    return 200, msg
+    return msg, 200
 
 
 @log_decor
-@app.route('/cian', methods='PUT')
+@app.route('/cian', methods=['PUT'])
 def cian_put():
     content = request.json
     if no_content(content):
@@ -156,11 +156,11 @@ def cian_put():
 
     db.update_station(content.get('name_old'), content.get('name_now'))
     msg = "zaglushka PUT cian"
-    return 200, msg
+    return msg, 200
 
 
 @log_decor
-@app.route('/cian', methods='DELETE')
+@app.route('/cian', methods=['DELETE'])
 def cian_delete():
     content = request.json
     if no_content(content):
@@ -168,7 +168,7 @@ def cian_delete():
 
     db.del_flat_user(content.get('id'))
     msg = "zaglushka DEL cian"
-    return 200, msg
+    return msg, 200
 
 
 if __name__ == '__main__':

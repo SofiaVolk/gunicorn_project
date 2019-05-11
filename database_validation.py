@@ -22,10 +22,10 @@ class HhSubdomainSchema(Schema):
     id_domain = fields.Nested(HhDomainSchema, many=True)
     name = fields.Str(allow_none=True)
 
-#
-# class HhShelduleSchema(Schema):
-#     id = fields.Int(dump_only=True)
-#     name = fields.Str(allow_none=True)
+
+class HhShelduleSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.Str(allow_none=True)
 
 
 class StationSchema(Schema):
@@ -40,7 +40,7 @@ class HhCompanySchema(Schema):
 
 
 class HhVacancyUserSchema(Schema):
-    company = fields.Str(allow_none=True)
+    about = fields.Str(allow_none=False)
     salary_min = fields.Float(allow_none=True)
     salary_max = fields.Float(allow_none=True)
     currency = fields.Str(allow_none=True)

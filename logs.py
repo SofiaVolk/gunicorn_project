@@ -4,7 +4,7 @@ LOGGING = {
     'version': 1,
     'formatters': {  # Форматирование сообщения
         'simple': {
-            'format': '[%(asctime)s] %(levelname)-8s %(module)s - %(message)-s',
+            'format': '[%(asctime)s] %(levelname)-8s %(module)-s - %(message)-s',
             'datefmt': '%Y-%m-%d %H:%M:%S'
         },
     },
@@ -32,4 +32,3 @@ LOGGING = {
 
 logging.config.dictConfig(LOGGING)
 api_logger = logging.getLogger('api_logger')
-
