@@ -21,10 +21,10 @@ def upgrade():
     op.create_table(
         'hh_vacancy',
         sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
-        sa.Column('name', sa.Unicode(200)),
+        sa.Column('title', sa.Unicode(200)),
         sa.Column('id_domain', sa.Integer),
         sa.Column('id_company', sa.Integer),
-        sa.Column('about', sa.Unicode(10000)),
+        sa.Column('description', sa.Unicode(10000)),
         sa.Column('salary_min', sa.Numeric),
         sa.Column('salary_max', sa.Numeric),
         sa.Column('id_curency', sa.Integer),
