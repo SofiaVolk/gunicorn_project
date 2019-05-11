@@ -4,7 +4,7 @@ import random
 import csv
 
 HH_BASEURL = 'https://api.hh.ru'
-PAGENUM = 3
+PAGENUM = 1
 SPECNUM = 1
 HEADER = ['id', 'name', 'profarea_id', 'profarea_name', 'employer', 'description',
           'salary_from', 'salary_to', 'currency', 'metro_station']
@@ -12,8 +12,8 @@ HEADER = ['id', 'name', 'profarea_id', 'profarea_name', 'employer', 'description
 
 def hh_url_constructor(specialisation_id):
     urls = []
-    # for spec_id in random.sample(specialisation_id, SPECNUM):
-    for spec_id in specialisation_id:
+    for spec_id in random.sample(specialisation_id, SPECNUM):
+    # for spec_id in specialisation_id:
         for page in range(PAGENUM):
             url = f'{HH_BASEURL}/vacancies?page={page}&area=1&specialization={spec_id}'
             r = requests.get(url)
@@ -39,7 +39,7 @@ def hh_parsing():
     with open('dataset_vacancy.csv', 'a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=HEADER, delimiter='|')
         writer.writeheader()
-        writer = csv.writer(csvfile, delimiter='|') # , quotechar='"'
+        writer = csv.writer(csvfile, delimiter='|')
 
         for url in urls:
             r = requests.get(url)
@@ -65,3 +65,4 @@ def hh_parsing():
 
 
 hh_parsing()
+
