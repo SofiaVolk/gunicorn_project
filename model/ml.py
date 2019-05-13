@@ -51,19 +51,19 @@ class Model:
 
     @lru_cache(maxsize=10000)
     def get_normal_form(self, word):
-        '''
+        """
         Получение нормальной формы слова
         :param word: слово в виде строки
         :return: нормальная форма от pymorpy2
-        '''
+        """
         return self.morph.normal_forms(word)[0]
 
     def text2vec(self, text):
-        '''
+        """
         Векторизация текста
         :param text: текст в виде строки
         :return: вектор слова от Word2Vec
-        '''
+        """
         words = [self.get_normal_form(i) for i in findall('\w+', text)
                  if ((not i.isdigit()) and (len(i) > 2) and
                      (i not in self.stopwords))]
@@ -76,22 +76,22 @@ class Model:
         return result
 
     def knn_youla(self, text, number=10):
-        '''
+        """
         Поиск похожих вещей
         :param text: текст в виде строки
         :param number: число похожих объявлений
         :return: список номеров строк похожих объявлений в бд
-        '''
+        """
         return self.youla_annoy.get_nns_by_vector(
             self.text2vec(text), number)
 
     def knn_hh(self, text, number=10):
-        '''
+        """
         Поиск похожих вакансий
         :param text: текст в виде строки
         :param number: число похожих объявлений
         :return: список номеров строк похожих объявлений в бд
-        '''
+        """
         return self.hh_annoy.get_nns_by_vector(
             self.text2vec(text), number)
 
@@ -100,11 +100,11 @@ class Model:
                                np.linalg.norm(y))
 
     def knn_dummy(self, text):
-        '''
+        """
         Предсказывание хотелки пользователя
         :param text: текст в виде строки
-        :return: youla или hh
-        '''
+        :return: youla, hh или dummy
+        """
         text_vec = self.text2vec(text)
         youla_similar = list(map(
             lambda x: self._cosine_similarity(x, text_vec),
@@ -124,10 +124,10 @@ class Model:
                 return 'dummy'
 
     def _load_youla_annoy(self, youla_annoy_filename=None):
-        '''
+        """
         Загрузка векторов вещей
-        :param path_from: путь файла с векторами
-        '''
+        :param youla_annoy_filename: название файла с векторами
+        """
         if youla_annoy_filename is None:
             file_path = path.join(YOULA_ANNOY_FOLDER,
                                   listdir(YOULA_ANNOY_FOLDER)[-1])
@@ -138,10 +138,10 @@ class Model:
         self.youla_annoy.load(file_path)
 
     def _load_hh_annoy(self, hh_annoy_filename=None):
-        '''
+        """
         Загрузка векторов вакансий
-        :param path_from: путь файла с векторами
-        '''
+        :param hh_annoy_filename: название файла с векторами
+        """
         if hh_annoy_filename is None:
             file_path = path.join(HH_ANNOY_FOLDER,
                                   listdir(HH_ANNOY_FOLDER)[-1])
@@ -152,10 +152,10 @@ class Model:
         self.hh_annoy.load(file_path)
 
     def _load_categories_dict(self, categories_dict_filename=None):
-        '''
+        """
         Загрузка векторов вакансий
-        :param path_from: путь файла с векторами
-        '''
+        :param categories_dict_filename: название файла со словарем
+        """
         if categories_dict_filename is None:
             file_path = path.join(CATEGORIES_DICT_FOLDER,
                                   listdir(CATEGORIES_DICT_FOLDER)[-1])
@@ -166,6 +166,10 @@ class Model:
             self.categories_dict = load(f)
 
     def _load_knn_model(self, knn_model_filename=None):
+        """
+        Загрузка модели KNC
+        :param knn_model_filename: название файла с моделью
+        """
         if knn_model_filename is None:
             file_path = path.join(KNN_MODEL_FOLDER,
                                   listdir(KNN_MODEL_FOLDER)[-1])
@@ -176,36 +180,34 @@ class Model:
             self.knn_model = load(f)
 
     def _load_w2v_model(self):
-        '''
+        """
         Загрузка Word2Vec
-        :param w2v_model_filename: название файла
-        '''
+        """
         self.w2v_model = KeyedVectors.load(W2V_MODEL_FILE)
 
     def _load_dummy_vectors(self):
-        '''
+        """
         Загрузка решающих векторов
-        '''
+        """
         youla_vectors = ['одежда', 'обувь', 'вещь', 'устройство', 'телефон', 'запчасть']
         hh_vectors = ['работа', 'зарплата', 'опыт', 'стажировка', 'график', 'профессия']
         self.youla_vectors = list(map(lambda x: self.text2vec(x), youla_vectors))
         self.hh_vectors = list(map(lambda x: self.text2vec(x), hh_vectors))
 
     def _load_stopwords(self):
-        '''
+        """
         Загрузка стоп слов
-        :param path_from: путь файла со словами
-        '''
+        """
         with open(STOPWORDS_FILE, encoding="utf8") as f:
             self.stopwords = f.read().split()
 
     def wish_handler(self, text, number=10):
-        '''
+        """
         Обработка хотелки и выдача похожих результатов
         :param text: текст в виде строки
         :param number: число похожих результатов
         :return: тип хотелки, список номеров строк в бд
-        '''
+        """
         decision = self.knn_dummy(text)
         if decision == 'youla':
             return 'youla', self.knn_youla(text, number)
@@ -214,63 +216,97 @@ class Model:
         else:
             return 'dummy', 'dummy'
 
-    def update(self, hh=False, youla=False):
-        TRAIN_KNN = False
-        if hh:
-            hh_annoy = AnnoyIndex(300)
-            if TRAIN_KNN:
-                data = pd.DataFrame(get_hh(fields=["title", "description"],
-                                           cats=["category_id", "category_name"]))
-            else:
-                data = pd.DataFrame(get_hh(fields=["title", "description"]))
-            data.title.fillna('', inplace=True)
-            data.description.fillna(data.title, inplace=True)
-            data['text'] = data.title + ' ' + data.description
-            vec = np.empty((data.shape[0], 300), dtype=np.float)
-            for i in range(data.shape[0]):
-                vec[i] = self.text2vec(data.iloc[i]['text'])
-            if TRAIN_KNN:
-                knn_model = KNeighborsClassifier()
-                knn_model.fit(vec, data['category_id'].values)
-                with open(path.join(
-                        KNN_MODEL_FOLDER,
-                        "knn_model_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
-                        "wb") as f:
-                    dump(self.knn_model, f)
-                cats = data.drop_duplicates(subset='category_id')
-                categories_dict = dict()
-                for i in cats[['category_id', 'category_name']].values:
-                    categories_dict[i[0]] = i[1]
-                with open(path.join(
-                        CATEGORIES_DICT_FOLDER,
-                        "categories_dict_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
-                        "wb") as f:
-                    dump(categories_dict, f)
-            for i, j in enumerate(vec):
-                hh_annoy.add_item(data.iloc[i]['id'], j)
-            hh_annoy.build(10)
-            hh_annoy.save(path.join(
-                HH_ANNOY_FOLDER,
-                "hh_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
-
-        if youla:
-            youla_annoy = AnnoyIndex(300)
-            data = pd.DataFrame(get_youla(fields=["title", "description"]))
-            data.title.fillna('', inplace=True)
-            data.description.fillna(data.title, inplace=True)
-            data['text'] = data.title + ' ' + data.description
-            vec = np.empty((data.shape[0], 300), dtype=np.float)
-            for i in range(data.shape[0]):
-                vec[i] = self.text2vec(data.iloc[i]['text'])
-            for i, j in enumerate(vec):
-                youla_annoy.add_item(data.iloc[i]['id'], j)
-            youla_annoy.build(10)
-            youla_annoy.save(path.join(
-                YOULA_ANNOY_FOLDER,
-                "youla_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
-
     def predict(self, id):
+        """
+        Предсказание категории объявление
+        :param id: уникальный номер объявления
+        :return: category_id, category_name
+        """
         data = pd.DataFrame(get_hh(id=id, fields=["title", "description"]))
         vec_text = self.text2vec(data['title'] + ' ' + data['description'])
         category_id = self.knn_model.predict([vec_text])[0]
         return category_id, self.categories_dict[category_id]
+
+
+class DataDumper:
+    """
+    Сохранение данных с базы в локальные файлы для использования в Model
+    """
+
+    def __init__(self, model):
+        self.model = model
+
+    def dump(self, hh=False, youla=False, with_categories=False):
+        """
+        Вызов методов
+        :param hh: сохранить данные с hh
+        :param youla: сохранить данные с юлы
+        :param with_categories: сохранить категории и переобучить предсказалку
+        :return: 
+        """
+        if hh:
+            self._dump_hh(with_categories=with_categories)
+        if youla:
+            self._dump_youla()
+
+    def _dump_hh(self, with_categories=False):
+        """
+        Сохранение данных с базы hh
+        :param with_categories: сохранить категории и переобучить предсказалку
+        """
+        hh_annoy = AnnoyIndex(300)
+        # data = pd.read_csv('.data/datasets/hh_dataset.csv')
+        if with_categories:
+            data = pd.DataFrame(get_hh(fields=["title", "description"],
+                                       cats=["category_id", "category_name"]))
+        else:
+            data = pd.DataFrame(get_hh(fields=["title", "description"]))
+        data.title.fillna('', inplace=True)
+        data.description.fillna(data.title, inplace=True)
+        data['text'] = data.title + ' ' + data.description
+        vec = np.empty((data.shape[0], 300), dtype=np.float)
+        for i in range(data.shape[0]):
+            vec[i] = self.model.text2vec(data.iloc[i]['text'])
+        if with_categories:
+            knn_model = KNeighborsClassifier()
+            knn_model.fit(vec, data['category_id'].values)
+            with open(path.join(
+                    KNN_MODEL_FOLDER,
+                    "knn_model_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
+                    "wb") as f:
+                dump(knn_model, f)
+            cats = data.drop_duplicates(subset='category_id')
+            categories_dict = dict()
+            for i in cats[['category_id', 'category_name']].values:
+                categories_dict[i[0]] = i[1]
+            with open(path.join(
+                    CATEGORIES_DICT_FOLDER,
+                    "categories_dict_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
+                    "wb") as f:
+                dump(categories_dict, f)
+        for i, j in enumerate(vec):
+            hh_annoy.add_item(data.iloc[i]['id'], j)
+        hh_annoy.build(10)
+        hh_annoy.save(path.join(
+            HH_ANNOY_FOLDER,
+            "hh_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
+
+    def _dump_youla(self):
+        """
+        Сохранить данные с базы юлы
+        """
+        youla_annoy = AnnoyIndex(300)
+        # data = pd.read_csv('.data/datasets/youla_dataset.csv')
+        data = pd.DataFrame(get_youla(fields=["title", "description"]))
+        data.title.fillna('', inplace=True)
+        data.description.fillna(data.title, inplace=True)
+        data['text'] = data.title + ' ' + data.description
+        vec = np.empty((data.shape[0], 300), dtype=np.float)
+        for i in range(data.shape[0]):
+            vec[i] = self.model.text2vec(data.iloc[i]['text'])
+        for i, j in enumerate(vec):
+            youla_annoy.add_item(data.iloc[i]['id'], j)
+        youla_annoy.build(10)
+        youla_annoy.save(path.join(
+            YOULA_ANNOY_FOLDER,
+            "youla_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
