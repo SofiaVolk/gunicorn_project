@@ -11,7 +11,6 @@ from pickle import dump, load
 from datetime import datetime
 from alembic.database import get_youla, get_hh
 
-
 CRITICAL_COSINE_SIMILARITY = 0.30
 CATEGORIES_DICT_FOLDER = path.join(".data/categories_dict/")
 HH_ANNOY_FOLDER = path.join(".data/hh_annoy/")
@@ -218,7 +217,7 @@ class Model:
     def update(self, hh=False, youla=False):
         TRAIN_KNN = False
         if hh:
-            self.hh_annoy.unload()
+            hh_annoy = AnnoyIndex(300)
             if TRAIN_KNN:
                 data = pd.DataFrame(get_hh(fields=["title", "description"],
                                            cats=["category_id", "category_name"]))
@@ -231,31 +230,31 @@ class Model:
             for i in range(data.shape[0]):
                 vec[i] = self.text2vec(data.iloc[i]['text'])
             if TRAIN_KNN:
-                self.knn_model = KNeighborsClassifier()
-                self.knn_model.fit(vec, data['category_id'].values)
+                knn_model = KNeighborsClassifier()
+                knn_model.fit(vec, data['category_id'].values)
                 with open(path.join(
                         KNN_MODEL_FOLDER,
                         "knn_model_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
                         "wb") as f:
                     dump(self.knn_model, f)
                 cats = data.drop_duplicates(subset='category_id')
-                self.categories_dict = dict()
+                categories_dict = dict()
                 for i in cats[['category_id', 'category_name']].values:
-                    self.categories_dict[i[0]] = i[1]
+                    categories_dict[i[0]] = i[1]
                 with open(path.join(
                         CATEGORIES_DICT_FOLDER,
                         "categories_dict_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
                         "wb") as f:
-                    dump(self.categories_dict, f)
+                    dump(categories_dict, f)
             for i, j in enumerate(vec):
-                self.hh_annoy.add_item(data.iloc[i]['id'], j)
-            self.hh_annoy.build(10)
-            self.hh_annoy.save(path.join(
+                hh_annoy.add_item(data.iloc[i]['id'], j)
+            hh_annoy.build(10)
+            hh_annoy.save(path.join(
                 HH_ANNOY_FOLDER,
                 "hh_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
 
         if youla:
-            self.youla_annoy.unload()
+            youla_annoy = AnnoyIndex(300)
             data = pd.DataFrame(get_youla(fields=["title", "description"]))
             data.title.fillna('', inplace=True)
             data.description.fillna(data.title, inplace=True)
@@ -264,15 +263,14 @@ class Model:
             for i in range(data.shape[0]):
                 vec[i] = self.text2vec(data.iloc[i]['text'])
             for i, j in enumerate(vec):
-                self.youla_annoy.add_item(data.iloc[i]['id'], j)
-            self.youla_annoy.build(10)
-            self.youla_annoy.save(path.join(
+                youla_annoy.add_item(data.iloc[i]['id'], j)
+            youla_annoy.build(10)
+            youla_annoy.save(path.join(
                 YOULA_ANNOY_FOLDER,
                 "youla_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
 
     def predict(self, id):
         data = pd.DataFrame(get_hh(id=id, fields=["title", "description"]))
         vec_text = self.text2vec(data['title'] + ' ' + data['description'])
-        # vec_text = self.hh_annoy.get_item_vector(id)
         category_id = self.knn_model.predict([vec_text])[0]
         return category_id, self.categories_dict[category_id]
