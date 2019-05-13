@@ -242,19 +242,25 @@ class DataDumper:
         :param hh: сохранить данные с hh
         :param youla: сохранить данные с юлы
         :param with_categories: сохранить категории и переобучить предсказалку
-        :return: 
+        :return: тапл названий сохраненных файлов
         """
+        hh_filename = ""
         if hh:
-            self._dump_hh(with_categories=with_categories)
+            hh_filename = self._dump_hh(with_categories=with_categories)
+        youla_filename = ""
         if youla:
-            self._dump_youla()
+            youla_filename = self._dump_youla()
+        return hh_filename, youla_filename
 
     def _dump_hh(self, with_categories=False):
         """
         Сохранение данных с базы hh
         :param with_categories: сохранить категории и переобучить предсказалку
+        :return: тапл названий сохраненных файлов
         """
         hh_annoy = AnnoyIndex(300)
+        categories_dict_filename = ""
+        knn_model_filename = ""
         # data = pd.read_csv('.data/datasets/hh_dataset.csv')
         if with_categories:
             data = pd.DataFrame(get_hh(fields=["title", "description"],
@@ -270,30 +276,33 @@ class DataDumper:
         if with_categories:
             knn_model = KNeighborsClassifier()
             knn_model.fit(vec, data['category_id'].values)
-            with open(path.join(
-                    KNN_MODEL_FOLDER,
-                    "knn_model_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
-                    "wb") as f:
+            knn_model_filename = "knn_model_" + \
+                                 datetime.now().strftime('%Y%m%d%H%M%S') + \
+                                 ".pkl"
+            with open(path.join(KNN_MODEL_FOLDER, knn_model_filename), "wb") as f:
                 dump(knn_model, f)
             cats = data.drop_duplicates(subset='category_id')
             categories_dict = dict()
             for i in cats[['category_id', 'category_name']].values:
                 categories_dict[i[0]] = i[1]
-            with open(path.join(
-                    CATEGORIES_DICT_FOLDER,
-                    "categories_dict_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".pkl"),
-                    "wb") as f:
+            categories_dict_filename = "categories_dict_" + \
+                                       datetime.now().strftime('%Y%m%d%H%M%S') + \
+                                       ".pkl"
+            with open(path.join(CATEGORIES_DICT_FOLDER, categories_dict_filename), "wb") as f:
                 dump(categories_dict, f)
         for i, j in enumerate(vec):
             hh_annoy.add_item(data.iloc[i]['id'], j)
         hh_annoy.build(10)
-        hh_annoy.save(path.join(
-            HH_ANNOY_FOLDER,
-            "hh_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
+        hh_annoy_filename = "hh_annoy_" + \
+                            datetime.now().strftime('%Y%m%d%H%M%S') + \
+                            ".ann"
+        hh_annoy.save(path.join(HH_ANNOY_FOLDER, hh_annoy_filename))
+        return hh_annoy_filename, categories_dict_filename, knn_model_filename
 
     def _dump_youla(self):
         """
         Сохранить данные с базы юлы
+        :return: название сохраненного файла
         """
         youla_annoy = AnnoyIndex(300)
         # data = pd.read_csv('.data/datasets/youla_dataset.csv')
@@ -307,6 +316,8 @@ class DataDumper:
         for i, j in enumerate(vec):
             youla_annoy.add_item(data.iloc[i]['id'], j)
         youla_annoy.build(10)
-        youla_annoy.save(path.join(
-            YOULA_ANNOY_FOLDER,
-            "youla_annoy_" + datetime.now().strftime('%Y%m%d%H%M%S') + ".ann"))
+        youla_annoy_filename = "youla_annoy_" + \
+                               datetime.now().strftime('%Y%m%d%H%M%S') + \
+                               ".ann"
+        youla_annoy.save(path.join(YOULA_ANNOY_FOLDER, youla_annoy_filename))
+        return youla_annoy_filename
