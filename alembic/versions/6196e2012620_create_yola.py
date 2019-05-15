@@ -21,7 +21,7 @@ def upgrade():
         'youla',
         sa.Column('id', sa.Integer, primary_key=True),
         sa.Column('title', sa.Unicode(1000)),
-        sa.Column('descrirption', sa.Unicode(10000)),
+        sa.Column('description', sa.Unicode(10000)),
         sa.Column('product_id', sa.Unicode(1000)),
         sa.Column('category_id', sa.Unicode(1000)),
         sa.Column('subcategory_id', sa.Unicode(1000)),

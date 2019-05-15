@@ -1,40 +1,36 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy, sqlalchemy
-from flask_marshmallow import Marshmallow,Schema, fields, pprint
+from sqlalchemy.orm import load_only, Load
+from flask_sqlalchemy import SQLAlchemy
+from flaskapp import app, str
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+
 # docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=atom_pass -e MYSQL_DATABASE=atom_db -h 127.0.0.1 -d mysql
+# docker ps
+# docker exec -it pid bash
 # mysql -u root -D atom_db -h 127.0.0.1 -p
 # alter database atom_db character set=utf8mb4 collate utf8mb4_unicode_ci; --для кодировки нужной в бд
 #  set names utf8mb4; -- чтобы в бд нормально отображалось всё
-#
-DB_CONFIG = {
-    'username': 'root',
-    'password': 'atom_pass',
-    'host': '127.0.0.1',
-    'dbname': 'atom_db',
-}
-app = Flask(__name__)
-# mysql+pymysql://username:password@server/db
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{DB_CONFIG['username']}:{DB_CONFIG['password']}@" \
-    f"{DB_CONFIG['host']}/{DB_CONFIG['dbname']}?charset=utf8mb4"
-app.config['SQLALCHEMY_DATABASE_URI'] =f"mysql+pymysql://root:atom_pass@127.0.0.1/atom_db?charset=utf8mb4"
-app.config['SQLALCHEMY_ECHO'] = True
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-app.config['SQLALCHEMY_RECORD_QUERIES'] = True
+# 
 db = SQLAlchemy(app)
-ma = Marshmallow(app)
+Session = sessionmaker()
+engine = create_engine(str)
+
+# связываем его с нашим классом Session
+Session.configure(bind=engine)
+
+# работаем с сессией
+session = Session()
+
 
 class hh_domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
 
-    # def __repr__(self):
-    #     return f'{type(self).__name__} <{self.id}>=<{self.name}>'
-    # db.create_all()
-    # db.session.commit()
 
 class station(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
+
 
 class curency(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -45,12 +41,13 @@ class hh_company(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
 
+
 class hh_vacancy(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200)),
+    title = db.Column(db.String(200))
     id_domain = db.Column(db.Integer, db.ForeignKey('hh_domain.id'))
     id_company = db.Column(db.Integer, db.ForeignKey('hh_company.id'))
-    about = db.Column(db.String(10000)),
+    description = db.Column(db.String(10000))
     salary_min = db.Column(db.Numeric)
     salary_max = db.Column(db.Numeric)
     id_curency = db.Column(db.Integer, db.ForeignKey('curency.id'))
@@ -66,12 +63,13 @@ class hh_vacancy(db.Model):
     curency = db.relationship("curency", backref="hh_vacancy", cascade="save-update, merge, delete",
                               primaryjoin='curency.id ==hh_vacancy.id_curency')
 
+
 class hh_vacancy_user(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200)),
+    name = db.Column(db.String(200))
     id_domain = db.Column(db.Integer, db.ForeignKey('hh_domain.id'))
     id_company = db.Column(db.Integer, db.ForeignKey('hh_company.id'))
-    about = db.Column(db.String(10000)),
+    about = db.Column(db.String(10000))
     salary_min = db.Column(db.Numeric)
     salary_max = db.Column(db.Numeric)
     id_curency = db.Column(db.Integer, db.ForeignKey('curency.id'))
@@ -87,12 +85,13 @@ class hh_vacancy_user(db.Model):
     curency = db.relationship("curency", backref="hh_vacancy_user", cascade="save-update, merge, delete",
                               primaryjoin='curency.id ==hh_vacancy_user.id_curency')
 
+
 class youla(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(10000)),
-    descrirption = db.Column(db.String(100000))
+    title = db.Column(db.String(10000))
+    description = db.Column(db.String(100000))
     product_id = db.Column(db.Integer)
-    category_id = db.Column(db.Integer),
+    category_id = db.Column(db.Integer)
     subcategory_id = db.Column(db.Integer)
     properties = db.Column(db.String(10000))
     image_links = db.Column(db.String(10000))
@@ -104,34 +103,38 @@ def get_id_station(name):
     if not station.query.filter_by(name=name).first():
         add_station(name)
     h=station.query.filter_by(name=name).first()
-    return h[0].id
+    return h.id
+
 
 def get_id_company(name):
     if not hh_company.query.filter_by(name=name).first():
         add_company(name)
     h = hh_company.query.filter_by(name=name).first()
-    return h[0].id
+    return h.id
+
 
 def get_id_domain(name):
     if not hh_domain.query.filter_by(name=name).first():
         add_domain(name)
     h = hh_domain.query.filter_by(name=name).first()
-    return h[0].id
+    return h.id
+
 
 def get_id_curency(name):
     if not curency.query.filter_by(name=name).first():
         add_curency(name)
     h = curency.query.filter_by(name=name).first()
-    return h[0].id
+    return h.id
+
 
 def get_domain(name=None):
-    g=[]
+    qs = hh_domain.query
+
     if name:
-        g=hh_domain.query.filter_by(name=name).first()
-        return g[0]
-    else:
-        g=hh_domain.quary.all()
-        return g[0]
+        qs = qs.filter_by(name=name)
+
+    return qs.all()
+
 
 def get_company(name=None):
     if name:
@@ -146,12 +149,81 @@ def get_station(name=None):
     else:
         return station.quary.first()
 
+
 def get_vacancy(id):  # всё по id
     q = hh_vacancy.query.filter_by(id=id).first()
     return q
 
+# для ml #####################################################################################################
 
+
+def get_vacancies(hh_vac,hh_dom): # 2 лист из списка нужных полей
+    c = []
+    ii = 0
+    for cc, i in session.query(hh_vacancy, hh_domain).join(hh_domain)\
+            .options(
+            Load(hh_vacancy).load_only(*hh_vac),
+            Load(hh_domain).load_only(*hh_dom)
+            ).all():
+        d = cc.__dict__
+        d.update(i.__dict__)
+        c.append(d)
+        c[ii].pop("_sa_instance_state")
+        ii = ii+1
+    return c  # возвращает список из словарей выбранных полей
+
+
+'''
+c=['title',"description"]
+cc=["name"]
+get_vacancies(c,cc)
+'''
+
+
+def get_youla(kwargs):  # лист из списка нужных полей
+    c = []
+    ii = 0
+    for i in session.query(youla).options(load_only(*kwargs)).all():
+        c.append(i.__dict__)
+        c[ii].pop("_sa_instance_state")
+        ii = ii + 1
+    return c  # возвращает список из словарей выбранных полей
+
+
+def get_list_youla(kwargs):  # лист из списка нужных полей
+    c = []
+    ii = 0
+    for i in session.query(youla).filter(youla.id.in_(kwargs)).all():
+        c.append(i.__dict__)
+        c[ii].pop("_sa_instance_state")
+        ii = ii + 1
+    return c  # возвращает список из словарей выбранных полей
+
+
+def get_list_vacancy(kwargs):  # лист из списка нужных полей
+    c = []
+    ii = 0
+    for i in session.query(hh_vacancy).filter(hh_vacancy.id.in_(kwargs)).all():
+        c.append(i.__dict__)
+        c[ii].pop("_sa_instance_state")
+        ii = ii + 1
+    return c  # возвращает список из словарей выбранных полей
+
+# get_list_vacancy(["1","3","6","7"])
+# get_list_youla(["1","3","6","7"])
+# def vacancy_for_user(args):
+#     c = []
+#     ii = 0
+#     for i in session.query(hh_vacancy).filter_by(hh_vacancy.id.in_(*args)).all():
+#         c.append(i.__dict__)
+#         c[ii].pop("_sa_instance_state")
+#         ii = ii + 1
+#     return c
+#
+# g=[12,15]
+# vacancy_for_user(g)
 # удаление ################################################################################################
+
 
 def del_vacancy_user(id):
     db.session.delete(hh_vacancy(id=id))
@@ -181,6 +253,7 @@ def update_domain(name_old, name_now):
 
 # добавить данные в таблицы########################################################################################
 
+
 def add_station(name_now):
     db.session.add(station(name=name_now))
     db.session.commit()
@@ -195,20 +268,22 @@ def add_curency(name_now):
     db.session.add(curency(name=name_now))
     db.session.commit()
 
+
 def add_domain(name_now):
     db.session.add(hh_domain(name=name_now))
     db.session.commit()
 
 
-def add_vacancy(id,name, domain,company=None, about=None, salary_min=None,salary_max=None, curency=None, station=None ):
+def add_vacancy(id, title, domain, company=None, description=None, salary_min=None, salary_max=None,
+                curency=None, station=None ):
         station_id = get_id_station(station) if station!=None else None
         id_company = get_id_company(company) if company!=None else None
         id_curency = get_id_curency(curency) if curency!=None else None
         id_domain = get_id_domain(domain)    if domain!=None else None
-        db.session.add(hh_vacancy(id=id, name=name
+        db.session.add(hh_vacancy(title=title
                                   , id_domain=id_domain
                                   , id_company=id_company
-                                  , about=about
+                                  , description=description
                                   , salary_min=salary_min
                                   , salary_max=salary_max
                                   , id_curency=id_curency
@@ -218,9 +293,9 @@ def add_vacancy(id,name, domain,company=None, about=None, salary_min=None,salary
         db.session.commit()
 
 
-def add_youla(title, descrirption,product_id, category_id, subcategory_id,properties, image_links):
-    db.session.add(youla( title=title
-                          , descrirption=descrirption
+def add_youla(title, description, product_id, category_id, subcategory_id, properties, image_links):
+    db.session.add(youla(title=title
+                          , description=description
                           , product_id=product_id
                           , category_id=category_id
                           , subcategory_id=subcategory_id
