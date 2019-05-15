@@ -209,7 +209,7 @@ def dump_categories():
     new_categories_dict = dict()
     for i in cats[['category_id', 'category_name']].values:
         new_categories_dict[i[0]] = i[1]
-    with open(".data/new_categories_dict.pkl", "wb") as f:
+    with open(".data/new_categories_dict.pkl", "wb+") as f:
         dump(new_categories_dict, f)
     data = data.sample(10000)
     data.title.fillna(data.description, inplace=True)
@@ -219,7 +219,7 @@ def dump_categories():
         vec[i] = Model.text2vec(data.iloc[i]['text'])
     new_categories_model = BaggingClassifier(DecisionTreeClassifier(min_samples_leaf=5))
     new_categories_model.fit(vec, data['category_id'].values)
-    with open(".data/new_categories_model.pkl", "wb") as f:
+    with open(".data/new_categories_model.pkl", "wb+") as f:
         dump(new_categories_model, f)
 
 
@@ -244,5 +244,5 @@ def dump_dummy():
         ids[i + data_hh.shape[0]] = 1
     new_dummy_model = KNeighborsClassifier()
     new_dummy_model.fit(vec, ids)
-    with open(".data/new_dummy_model.pkl", "wb") as f:
+    with open(".data/new_dummy_model.pkl", "wb+") as f:
         dump(new_dummy_model, f)
