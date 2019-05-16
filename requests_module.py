@@ -51,7 +51,7 @@ def no_content(content):
         return False
 
 
-#@log_decor
+@log_decor
 @app.route('/', methods=['POST'])
 def index():
     content = request.json
@@ -65,7 +65,7 @@ def index():
 
     return '', 200
 
-#@log_decor
+@log_decor
 @app.route('/auth', methods=['POST'])
 def auth():
     content = request.json
