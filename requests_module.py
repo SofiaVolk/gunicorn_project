@@ -1,12 +1,20 @@
 from flask import request, jsonify
 import marshmallow
 import time
-
+import database1
 import logs
 from flaskapp import app
 # from model.ml import wish_handler
+from flask import abort, jsonify, request
+from flask_login import (
+    LoginManager, login_required, login_user, logout_user
+)
+
+# python3.7 server.py
 
 
+login_manager = LoginManager()
+login_manager.init_app(app)
 def start_timer():
     request.start_time = time.time()
 
@@ -43,7 +51,7 @@ def no_content(content):
         return False
 
 
-@log_decor
+#@log_decor
 @app.route('/', methods=['POST'])
 def index():
     content = request.json
@@ -57,6 +65,40 @@ def index():
 
     return '', 200
 
+#@log_decor
+@app.route('/auth', methods=['POST'])
+def auth():
+    content = request.json
+    if not request.json:
+        abort(400)
+
+    user = database1.check_users(content['mail'],content['password'])
+    if not user:
+        abort(401)
+
+    login_user(user, remember=True)
+    return '', 204
+
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return '', 204
+
+
+@app.route('/registration', methods=['POST'])
+def registration():
+    if not request.json:
+        abort(400)
+    data = request.json
+    # Установка данных
+    r=database1.add_users(data['password'], (data['mail']))
+    if r:
+        return jsonify({'password': data['mail']})
+    else:
+        abort(400)
 
 '''
 @log_decor
