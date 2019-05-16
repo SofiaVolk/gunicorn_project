@@ -134,7 +134,18 @@ class Model:
         data = pd.read_csv(".data/hh_dataset.csv").iloc[id]
         # раскомментить после слияния
         # data = pd.DataFrame(get_vacancies(id=id, fields=["title", "description"]))
-        return self.predict_text(data['title'] + ' ' + data['description'])
+        return self.predict_text(data['title'])
+
+    def predict_description(self, id):
+        """
+        Предсказание категории объявление
+        :param id: уникальный номер объявления
+        :return: category_id, category_name
+        """
+        data = pd.read_csv(".data/hh_dataset.csv").iloc[id]
+        # раскомментить после слияния
+        # data = pd.DataFrame(get_vacancies(id=id, fields=["title", "description"]))
+        return self.predict_text(data['title']+ " "+ data['description'])
 
     def predict_text(self, text):
         """
