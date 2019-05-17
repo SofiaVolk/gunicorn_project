@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pymorphy2 import MorphAnalyzer
+from os import path, remove
 from re import findall
 from functools import lru_cache
 from gensim.models import KeyedVectors
@@ -174,7 +175,10 @@ def dump_hh():
     for i, j in enumerate(vec):
         new_hh_annoy.add_item(i, j)
     new_hh_annoy.build(10)
-    new_hh_annoy.save(".data/hh_annoy.ann")
+    annoy_path = ".data/hh_annoy.ann"
+    if path.isfile(annoy_path):
+        remove(annoy_path)
+    new_hh_annoy.save(annoy_path)
 
 
 def dump_youla():
@@ -192,7 +196,10 @@ def dump_youla():
     for i, j in enumerate(vec):
         new_youla_annoy.add_item(i, j)
     new_youla_annoy.build(10)
-    new_youla_annoy.save(".data/youla_annoy.ann")
+    annoy_path = ".data/youla_annoy.ann"
+    if path.isfile(annoy_path):
+        remove(annoy_path)
+    new_youla_annoy.save(annoy_path)
 
 
 def dump_categories():
