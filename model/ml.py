@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 from pymorphy2 import MorphAnalyzer
 from re import findall
 from functools import lru_cache
@@ -9,9 +12,7 @@ from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from pickle import dump, load
 from sklearn.neighbors import KNeighborsClassifier
-
-# раскомменить после слияния
-# from alembic.database1 import get_youla, get_vacancies
+from alembic.database1 import get_youla, get_vacancies, get_vacancy
 
 CRITICAL_SIMILARITY = 0.75
 
@@ -131,21 +132,11 @@ class Model:
         :param id: уникальный номер объявления
         :return: category_id, category_name
         """
-        data = pd.read_csv(".data/hh_dataset.csv").iloc[id]
-        # раскомментить после слияния
-        # data = pd.DataFrame(get_vacancies(id=id, fields=["title", "description"]))
+        try:
+            data = pd.DataFrame(get_vacancy(id=id))
+        except Exception:
+            data = pd.DataFrame(get_vacancies(hh_vac=["title", "description"], hh_dom=[])).iloc[id]
         return self.predict_text(data['title'])
-
-    def predict_description(self, id):
-        """
-        Предсказание категории объявление
-        :param id: уникальный номер объявления
-        :return: category_id, category_name
-        """
-        data = pd.read_csv(".data/hh_dataset.csv").iloc[id]
-        # раскомментить после слияния
-        # data = pd.DataFrame(get_vacancies(id=id, fields=["title", "description"]))
-        return self.predict_text(data['title']+ " "+ data['description'])
 
     def predict_text(self, text):
         """
@@ -172,9 +163,7 @@ def dump_hh():
     """
     Сохранение данных с базы hh
     """
-    data = pd.read_csv('.data/hh_dataset.csv')
-    # раскомментить после слияния веток
-    # data = pd.DataFrame(get_vacancies(fields=["title", "description"]))
+    data = pd.DataFrame(get_vacancies(hh_vac=["title", "description"], hh_dom=[]))
     data.title.fillna('', inplace=True)
     data.description.fillna(data.title, inplace=True)
     data['text'] = data.title + ' ' + data.description
@@ -185,16 +174,14 @@ def dump_hh():
     for i, j in enumerate(vec):
         new_hh_annoy.add_item(i, j)
     new_hh_annoy.build(10)
-    new_hh_annoy.save(".data/new_hh_annoy.ann")
+    new_hh_annoy.save(".data/hh_annoy.ann")
 
 
 def dump_youla():
     """
     Сохранение данных с базы юлы
     """
-    data = pd.read_csv('.data/youla_dataset.csv')
-    # раскомментить после слияния веток
-    # data = pd.DataFrame(get_youla(fields=["title", "description"]))
+    data = pd.DataFrame(get_youla(["title", "description"]))
     data.title.fillna('', inplace=True)
     data.description.fillna(data.title, inplace=True)
     data['text'] = data.title + ' ' + data.description
@@ -205,22 +192,20 @@ def dump_youla():
     for i, j in enumerate(vec):
         new_youla_annoy.add_item(i, j)
     new_youla_annoy.build(10)
-    new_youla_annoy.save(".data/new_youla_annoy.ann")
+    new_youla_annoy.save(".data/youla_annoy.ann")
 
 
 def dump_categories():
     """
     Сохранение категорий и переобучение предсказалки
     """
-    data = pd.read_csv('.data/hh_dataset.csv')
-    # раскомментить после слияния веток
-    # data = pd.DataFrame(get_vacancies(fields=["title", "description"],
-    #                                  cats=["category_id", "category_name"]))
-    cats = data.drop_duplicates(subset='category_id')
+    data = pd.DataFrame(get_vacancies(hh_vac=["title", "description"],
+                                      hh_dom=["id", "name"]))
+    cats = data.drop_duplicates(subset='name')
     new_categories_dict = dict()
-    for i in cats[['category_id', 'category_name']].values:
+    for i in cats[['id', 'name']].values:
         new_categories_dict[i[0]] = i[1]
-    with open(".data/new_categories_dict.pkl", "wb+") as f:
+    with open(".data/categories_dict.pkl", "wb+") as f:
         dump(new_categories_dict, f)
     data = data.sample(10000)
     data.title.fillna(data.description, inplace=True)
@@ -230,7 +215,7 @@ def dump_categories():
         vec[i] = Model.text2vec(data.iloc[i]['text'])
     new_categories_model = BaggingClassifier(DecisionTreeClassifier(min_samples_leaf=5))
     new_categories_model.fit(vec, data['category_id'].values)
-    with open(".data/new_categories_model.pkl", "wb+") as f:
+    with open(".data/categories_model.pkl", "wb+") as f:
         dump(new_categories_model, f)
 
 
@@ -238,11 +223,8 @@ def dump_dummy():
     """
     Сохранение решающей модели
     """
-    data_hh = pd.read_csv('.data/hh_dataset.csv').sample(10000)
-    data_youla = pd.read_csv('.data/youla_dataset.csv').sample(10000)
-    # раскомментить после слияния веток
-    # data_hh = pd.DataFrame(get_vacancies(fields=["title", "description"]))
-    # data_youla = pd.DataFrame(get_youla(fields=["title", "description"]))
+    data_hh = pd.DataFrame(get_vacancies(hh_vac=["title", "description"], hh_domain=[]))
+    data_youla = pd.DataFrame(get_youla(["title", "description"]))
     for data in [data_hh, data_youla]:
         data.title.fillna(data.description, inplace=True)
         data['text'] = data.title
@@ -255,5 +237,5 @@ def dump_dummy():
         ids[i + data_hh.shape[0]] = 1
     new_dummy_model = KNeighborsClassifier()
     new_dummy_model.fit(vec, ids)
-    with open(".data/new_dummy_model.pkl", "wb+") as f:
-        dump(new_dummy_model, f)
+    with open(".data/dummy_model.pkl", "wb+") as f:
+        dump(dummy_model, f)
