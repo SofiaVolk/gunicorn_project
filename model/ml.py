@@ -15,9 +15,7 @@ from pickle import dump, load
 from sklearn.neighbors import KNeighborsClassifier
 from project_atom_app.database1 import get_youla, get_vacancies
 
-CRITICAL_SIMILARITY = 0.75
-
-print("Я родился в {}", format(getcwd()))
+CRITICAL_SIMILARITY = 0.70
 
 with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/categories_dict.pkl", "rb") as f:
     categories_dict = load(f)
@@ -57,7 +55,6 @@ class Model:
         try:
             p = p.normal_form + '_' + p.tag.POS
         except Exception as e:
-            print(str(e) + " на слове " + p.normal_form)
             p = p.normal_form
         return p
 
@@ -207,7 +204,7 @@ def dump_categories():
     """
     Сохранение категорий и переобучение предсказалки
     """
-    data = pd.DataFrame(get_vacancies(["title", "description"], ["id_domain", "name"]))
+    data = pd.DataFrame(get_vacancies(["title", "description", "id_domain"], ["name"]))
     cats = data.drop_duplicates(subset='id_domain')
     new_categories_dict = dict()
     for i in cats[['id_domain', 'name']].values:
