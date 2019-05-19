@@ -1,6 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
 from pymorphy2 import MorphAnalyzer
 from os import path, remove, getcwd
 from re import findall
@@ -15,7 +12,8 @@ from pickle import dump, load
 from sklearn.neighbors import KNeighborsClassifier
 from project_atom_app.database1 import get_youla, get_vacancies
 
-CRITICAL_SIMILARITY = 0.70
+CRITICAL_SIMILARITY = 0.75
+NULL_VECTOR = np.zeros(300)
 
 with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/categories_dict.pkl", "rb") as f:
     categories_dict = load(f)
@@ -55,6 +53,7 @@ class Model:
         try:
             p = p.normal_form + '_' + p.tag.POS
         except Exception as e:
+            print(str(e) + " на слове " + p.normal_form)
             p = p.normal_form
         return p
 
@@ -103,6 +102,9 @@ class Model:
         :return: тип хотелки
         """
         vector = self.text2vec(text)
+        null_vector = np.zeros(300)
+        if (vector == null_vector).all():
+            return "dummy"
         decision = dummy_model.predict_proba([vector])[0]
         print(decision)
         if decision[1] >= CRITICAL_SIMILARITY:
@@ -120,6 +122,8 @@ class Model:
         :return: тип хотелки, список номеров строк в бд
         """
         vector = self.text2vec(text)
+        if (vector == NULL_VECTOR).all():
+            return "dummy", list()
         decision = dummy_model.predict_proba([vector])[0]
         if decision[1] >= CRITICAL_SIMILARITY:
             return 'youla', self.knn_youla(text, number)
@@ -153,9 +157,13 @@ def dump_all():
     Дамп всего
     """
     dump_hh()
+    print("hh")
     dump_youla()
+    print("youla")
     dump_categories()
+    print("categories")
     dump_dummy()
+    print("dummy")
 
 
 def dump_hh():
@@ -243,3 +251,5 @@ def dump_dummy():
     new_dummy_model.fit(vec, ids)
     with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/dummy_model.pkl", "wb+") as f:
         dump(new_dummy_model, f)
+
+# dump_all()
