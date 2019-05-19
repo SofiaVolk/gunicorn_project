@@ -1,4 +1,8 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 from pymorphy2 import MorphAnalyzer
+from os import path, remove, getcwd
 from re import findall
 from functools import lru_cache
 from gensim.models import KeyedVectors
@@ -9,31 +13,30 @@ from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from pickle import dump, load
 from sklearn.neighbors import KNeighborsClassifier
+from project_atom_app.database1 import get_youla, get_vacancies
 
-# раскомменить после слияния
-# from alembic.database1 import get_youla, get_vacancies
+CRITICAL_SIMILARITY = 0.70
 
-CRITICAL_SIMILARITY = 0.75
-
-with open(".data/categories_dict.pkl", "rb") as f:
+with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/categories_dict.pkl", "rb") as f:
     categories_dict = load(f)
 
-with open(".data/categories_model.pkl", "rb") as f:
+with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/categories_model.pkl", "rb") as f:
     categories_model = load(f)
 
-with open(".data/dummy_model.pkl", "rb") as f:
+with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/dummy_model.pkl", "rb") as f:
     dummy_model = load(f)
 
-w2v_model = KeyedVectors.load_word2vec_format(".data/araneum_upos_skipgram_300_2_2018.vec")
+w2v_model = KeyedVectors.load_word2vec_format(
+    "/home/sonya/gunicorn-master/project_atom_app/model/.data/araneum_upos_skipgram_300_2_2018.vec")
 
-with open(".data/stopwords.txt", "r") as f:
+with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/stopwords.txt", "r") as f:
     stopwords = f.read().split()
 
 hh_annoy = AnnoyIndex(300)
-hh_annoy.load(".data/hh_annoy.ann")
+hh_annoy.load("/home/sonya/gunicorn-master/project_atom_app/model/.data/hh_annoy.ann")
 
 youla_annoy = AnnoyIndex(300)
-youla_annoy.load(".data/youla_annoy.ann")
+youla_annoy.load("/home/sonya/gunicorn-master/project_atom_app/model/.data/youla_annoy.ann")
 
 morph = MorphAnalyzer()
 
@@ -51,7 +54,7 @@ class Model:
         p = morph.parse(word)[0]
         try:
             p = p.normal_form + '_' + p.tag.POS
-        except Exception:
+        except Exception as e:
             p = p.normal_form
         return p
 
@@ -131,10 +134,8 @@ class Model:
         :param id: уникальный номер объявления
         :return: category_id, category_name
         """
-        data = pd.read_csv(".data/hh_dataset.csv").iloc[id]
-        # раскомментить после слияния
-        # data = pd.DataFrame(get_vacancies(id=id, fields=["title", "description"]))
-        return self.predict_text(data['title'] + ' ' + data['description'])
+        category_id = categories_model.predict([hh_annoy.get_item_vector(id)])[0]
+        return category_id, categories_dict[category_id]
 
     def predict_text(self, text):
         """
@@ -161,9 +162,7 @@ def dump_hh():
     """
     Сохранение данных с базы hh
     """
-    data = pd.read_csv('.data/hh_dataset.csv')
-    # раскомментить после слияния веток
-    # data = pd.DataFrame(get_vacancies(fields=["title", "description"]))
+    data = pd.DataFrame(get_vacancies(["title", "description"]))
     data.title.fillna('', inplace=True)
     data.description.fillna(data.title, inplace=True)
     data['text'] = data.title + ' ' + data.description
@@ -172,18 +171,19 @@ def dump_hh():
         vec[i] = Model.text2vec(data.iloc[i]['text'])
     new_hh_annoy = AnnoyIndex(300)
     for i, j in enumerate(vec):
-        new_hh_annoy.add_item(i, j)
+        new_hh_annoy.add_item(data.iloc[i]["id"], j)
     new_hh_annoy.build(10)
-    new_hh_annoy.save(".data/new_hh_annoy.ann")
+    annoy_path = "/home/sonya/gunicorn-master/project_atom_app/model/.data/hh_annoy.ann"
+    if path.isfile(annoy_path):
+        remove(annoy_path)
+    new_hh_annoy.save(annoy_path)
 
 
 def dump_youla():
     """
     Сохранение данных с базы юлы
     """
-    data = pd.read_csv('.data/youla_dataset.csv')
-    # раскомментить после слияния веток
-    # data = pd.DataFrame(get_youla(fields=["title", "description"]))
+    data = pd.DataFrame(get_youla(["title", "description"]))
     data.title.fillna('', inplace=True)
     data.description.fillna(data.title, inplace=True)
     data['text'] = data.title + ' ' + data.description
@@ -192,24 +192,24 @@ def dump_youla():
         vec[i] = Model.text2vec(data.iloc[i]['text'])
     new_youla_annoy = AnnoyIndex(300)
     for i, j in enumerate(vec):
-        new_youla_annoy.add_item(i, j)
+        new_youla_annoy.add_item(data.iloc[i]["id"], j)
     new_youla_annoy.build(10)
-    new_youla_annoy.save(".data/new_youla_annoy.ann")
+    annoy_path = "/home/sonya/gunicorn-master/project_atom_app/model/.data/youla_annoy.ann"
+    if path.isfile(annoy_path):
+        remove(annoy_path)
+    new_youla_annoy.save(annoy_path)
 
 
 def dump_categories():
     """
     Сохранение категорий и переобучение предсказалки
     """
-    data = pd.read_csv('.data/hh_dataset.csv')
-    # раскомментить после слияния веток
-    # data = pd.DataFrame(get_vacancies(fields=["title", "description"],
-    #                                  cats=["category_id", "category_name"]))
-    cats = data.drop_duplicates(subset='category_id')
+    data = pd.DataFrame(get_vacancies(["title", "description", "id_domain"], ["name"]))
+    cats = data.drop_duplicates(subset='id_domain')
     new_categories_dict = dict()
-    for i in cats[['category_id', 'category_name']].values:
+    for i in cats[['id_domain', 'name']].values:
         new_categories_dict[i[0]] = i[1]
-    with open(".data/new_categories_dict.pkl", "wb") as f:
+    with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/categories_dict.pkl", "wb+") as f:
         dump(new_categories_dict, f)
     data = data.sample(10000)
     data.title.fillna(data.description, inplace=True)
@@ -218,8 +218,8 @@ def dump_categories():
     for i in range(data.shape[0]):
         vec[i] = Model.text2vec(data.iloc[i]['text'])
     new_categories_model = BaggingClassifier(DecisionTreeClassifier(min_samples_leaf=5))
-    new_categories_model.fit(vec, data['category_id'].values)
-    with open(".data/new_categories_model.pkl", "wb") as f:
+    new_categories_model.fit(vec, data['id_domain'].values)
+    with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/categories_model.pkl", "wb+") as f:
         dump(new_categories_model, f)
 
 
@@ -227,11 +227,8 @@ def dump_dummy():
     """
     Сохранение решающей модели
     """
-    data_hh = pd.read_csv('.data/hh_dataset.csv').sample(10000)
-    data_youla = pd.read_csv('.data/youla_dataset.csv').sample(10000)
-    # раскомментить после слияния веток
-    # data_hh = pd.DataFrame(get_vacancies(fields=["title", "description"]))
-    # data_youla = pd.DataFrame(get_youla(fields=["title", "description"]))
+    data_hh = pd.DataFrame(get_vacancies(["title", "description"])).sample(10000)
+    data_youla = pd.DataFrame(get_youla(["title", "description"])).sample(10000)
     for data in [data_hh, data_youla]:
         data.title.fillna(data.description, inplace=True)
         data['text'] = data.title
@@ -244,5 +241,5 @@ def dump_dummy():
         ids[i + data_hh.shape[0]] = 1
     new_dummy_model = KNeighborsClassifier()
     new_dummy_model.fit(vec, ids)
-    with open(".data/new_dummy_model.pkl", "wb") as f:
+    with open("/home/sonya/gunicorn-master/project_atom_app/model/.data/dummy_model.pkl", "wb+") as f:
         dump(new_dummy_model, f)
