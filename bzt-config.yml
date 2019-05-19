@@ -1,0 +1,11 @@
+execution: 
+   concurrency: 100 
+   hold-for: 30s
+   ramp-up: 1m
+   scenario:
+     requests:
+       - url: http://127.0.0.1:8000/
+         method: POST
+         body: '{"text":"гмшроьрп"}'
+         label: app
+         timeout: 3s
