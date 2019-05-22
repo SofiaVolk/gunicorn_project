@@ -201,11 +201,12 @@ class Arbiter(object):
         self.start()
         util._setproctitle("master [%s]" % self.proc_name)
 
-        "Starting new customer process - pickle checker "
+        "Starting new customer process - dataset checker "
         self.checker_alive = False
         self.checker_pipe = os.pipe()
         for p in self.checker_pipe:
             util.set_non_blocking(p)
+            util.close_on_exec(p)
         self.manage_checker()
 
         try:
@@ -662,11 +663,15 @@ class Arbiter(object):
             raise
 
     def manage_checker(self, update_workers_pids=False):
+        """
+         Manage whether checker is alive.
+         When yes - send worker's pids, else - start new checker
+        """
         if not self.checker_alive:
             self.spawn_checker()
             return
 
-        if psutil.pid_exists(self.pickle_checker_pid):  # os.kill(pid, 0)
+        if psutil.pid_exists(self.dataset_checker_pid):  # os.kill(pid, 0)
             if update_workers_pids:
                 self.maybe_update_workers_pids()
             return
@@ -675,15 +680,21 @@ class Arbiter(object):
             self.spawn_checker()
 
     def spawn_checker(self):
-        pickle_checker = checker.Checker(self.log, self.checker_pipe[0])
-        pickle_checker.start()
+        """
+         Spawn new checker process.
+        """
+        dataset_checker = checker.Checker(self.pid, self.log, self.checker_pipe[0])
+        dataset_checker.start()
         self.checker_alive = True
-        self.pickle_checker_pid = pickle_checker.pid
-        self.workers = pickle_checker.workers
+        self.dataset_checker_pid = dataset_checker.pid
+        self.workers = dataset_checker.workers
 
     def kill_checker(self):
+        """
+         Kill checker process with sig.SIGTERM
+        """
         try:
-            os.kill(self.pickle_checker_pid, signal.SIGTERM)
+            os.kill(self.dataset_checker_pid, signal.SIGTERM)
             self.checker_alive = False
         except OSError as e:
             if e.errno == errno.ESRCH:
@@ -692,6 +703,9 @@ class Arbiter(object):
             raise
 
     def maybe_update_workers_pids(self):
+        """
+         Send new worker's pids to checker if they changed
+        """
         new_workers = []
         for key in self.WORKERS.keys():
             new_workers.append(key)

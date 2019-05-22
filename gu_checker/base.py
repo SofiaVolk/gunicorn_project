@@ -25,7 +25,7 @@ from gunicorn.http.wsgi import Response, default_environ
 from gunicorn.reloader import reloader_engines
 from gunicorn.workers.workertmp import WorkerTmp
 
-from gunicorn.checker import picklefile
+from gunicorn.checker import dataset
 
 
 class Worker(object):
@@ -270,5 +270,6 @@ class Worker(object):
         self.log.debug("worker: SIGWINCH ignored.")
 
     def handle_usr2(self, sig, frame):
-        picklefile.reload_pickle()
-        self.log.info("Pickle file reloaded")
+        self.log.info("Dataset reloaded")
+        self.app.load()
+

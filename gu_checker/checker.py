@@ -6,16 +6,19 @@ import errno
 import sys
 import os
 
-from gunicorn.checker import picklefile
+from gunicorn.checker import dataset
 
 SIZE_MAX = 512  # one page
 
 
 class Checker(Process):
-    def __init__(self, log, pipe):
+    def __init__(self, ppid, log, pipe):
         self.log = log
         self.pipe = pipe
+        self.ppid = ppid
         self.workers = []
+        self.file_changed = False
+        self.file_ctime = 0
         super().__init__()
 
     def run(self):
@@ -24,13 +27,18 @@ class Checker(Process):
 
         while True:
             self.sleep()
-            if picklefile.test_pickle():
+            self.file_changed, self.file_ctime = dataset.maybe_update_dataset(self.file_ctime)
+            if self.file_changed:
                 for worker_pid in self.workers:
                     try:
                         os.kill(worker_pid, signal.SIGUSR2)
                     except OSError as e:
                         if e.errno != errno.ESRCH:  # otherwise checker terminates
                             raise
+
+            if not self.is_master_alive():
+                time.sleep(0.1)
+                sys.exit(0)
 
     def init_signals(self):
         signal.signal(signal.SIGTERM, self.handle_exit)
@@ -52,4 +60,13 @@ class Checker(Process):
                 raise
         except KeyboardInterrupt:
             sys.exit()
+
+    def is_master_alive(self):
+        """
+         Shut down if master changed or ended ungracefully
+        """
+        if self.ppid != os.getppid():
+            self.log.info("Master changed, shutting down: %s", self)
+            return False
+        return True
 
